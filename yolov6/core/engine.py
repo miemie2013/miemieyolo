@@ -52,6 +52,20 @@ class Trainer:
         self.save_dir = args.save_dir
         # get data loader
         self.data_dict = load_yaml(args.data_path)
+        # 判断是否是调试状态
+        import sys
+        isDebug = True if sys.gettrace() else False
+        if isDebug:
+            print('Debug Mode.')
+            self.data_dict['train'] = '../' + self.data_dict['train']
+            self.data_dict['val'] = '../' + self.data_dict['val']
+            self.data_dict['test'] = '../' + self.data_dict['test']
+            if 'anno_path' in self.data_dict.keys():
+                self.data_dict['anno_path'] = '../' + self.data_dict['anno_path']
+            if 'train_anno_path' in self.data_dict.keys():
+                self.data_dict['train_anno_path'] = '../' + self.data_dict['train_anno_path']
+            if 'val_anno_path' in self.data_dict.keys():
+                self.data_dict['val_anno_path'] = '../' + self.data_dict['val_anno_path']
         self.num_classes = self.data_dict['nc']
         # get model and optimizer
         self.distill_ns = True if self.args.distill and self.cfg.model.type in ['YOLOv6n','YOLOv6s'] else False

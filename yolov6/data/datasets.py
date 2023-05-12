@@ -10,6 +10,7 @@ import json
 import time
 import hashlib
 from pathlib import Path
+from pycocotools.coco import COCO
 
 from multiprocessing.pool import Pool
 
@@ -48,6 +49,114 @@ def img2label_paths(img_paths):
     sa, sb = f'{os.sep}images{os.sep}', f'{os.sep}labels{os.sep}'  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
+
+# 数据清洗
+def data_clean(coco, img_ids, catid2clsid, image_dir, type, xy_plus_1=False):
+    records = []
+    ct = 0
+    for img_id in img_ids:
+        img_anno = coco.loadImgs(img_id)[0]
+        im_fname = img_anno['file_name']
+        im_w = float(img_anno['width'])
+        im_h = float(img_anno['height'])
+
+        ins_anno_ids = coco.getAnnIds(imgIds=img_id, iscrowd=False)   # 读取这张图片所有标注anno的id
+        instances = coco.loadAnns(ins_anno_ids)   # 这张图片所有标注anno。每个标注有'segmentation'、'bbox'、...
+
+        bboxes = []
+        anno_id = []    # 注解id
+        for inst in instances:
+            x, y, box_w, box_h = inst['bbox']   # 读取物体的包围框
+            x1 = max(0, x)
+            y1 = max(0, y)
+            x2 = min(im_w - 1, x1 + max(0, box_w - 1))
+            y2 = min(im_h - 1, y1 + max(0, box_h - 1))
+            if inst['area'] > 0 and x2 >= x1 and y2 >= y1:
+                inst['clean_bbox'] = [x1, y1, x2, y2]   # inst增加一个键值对
+                bboxes.append(inst)   # 这张图片的这个物体标注保留
+                anno_id.append(inst['id'])
+            else:
+                print(
+                    'Found an invalid bbox in annotations: im_id: {}, '
+                    'area: {} x1: {}, y1: {}, x2: {}, y2: {}.'.format(
+                        img_id, float(inst['area']), x1, y1, x2, y2))
+        num_bbox = len(bboxes)   # 这张图片的物体数
+
+        # 用于调试bug，获得所有没有gt的图片
+        # if num_bbox > 0:
+        #     continue
+
+        # 左上角坐标+右下角坐标+类别id
+        gt_bbox = np.zeros((num_bbox, 4), dtype=np.float32)
+        gt_class = np.zeros((num_bbox, 1), dtype=np.int32)
+        gt_score = np.ones((num_bbox, 1), dtype=np.float32)   # 得分的标注都是1
+        is_crowd = np.zeros((num_bbox, 1), dtype=np.int32)
+        difficult = np.zeros((num_bbox, 1), dtype=np.int32)
+        gt_poly = [None] * num_bbox
+
+        for i, box in enumerate(bboxes):
+            catid = box['category_id']
+            gt_class[i][0] = catid2clsid[catid]
+            gt_bbox[i, :] = box['clean_bbox']
+            if xy_plus_1:
+                gt_bbox[i, 2] += 1.
+                gt_bbox[i, 3] += 1.
+            is_crowd[i][0] = box['iscrowd']
+            if 'segmentation' in box:
+                gt_poly[i] = box['segmentation']
+
+        im_fname = os.path.join(image_dir,
+                                im_fname) if image_dir else im_fname
+        coco_rec = {
+            'im_file': im_fname,
+            'im_id': np.array([img_id]),
+            'h': im_h,
+            'w': im_w,
+            'is_crowd': is_crowd,
+            'gt_class': gt_class,
+            'anno_id': anno_id,
+            'gt_bbox': gt_bbox,
+            'gt_score': gt_score,
+            'gt_poly': gt_poly,
+        }
+
+        # logger.debug('Load file: {}, im_id: {}, h: {}, w: {}.'.format(im_fname, img_id, im_h, im_w))
+        records.append(coco_rec)   # 注解文件。
+        ct += 1
+    print('{} samples in {} set.'.format(ct, type))
+    return records
+
+
+
+
+def get_class_msg(anno_path):
+    _catid2clsid = {}
+    _clsid2catid = {}
+    _clsid2cname = {}
+    with open(anno_path, 'r', encoding='utf-8') as f2:
+        dataset_text = ''
+        for line in f2:
+            line = line.strip()
+            dataset_text += line
+        eval_dataset = json.loads(dataset_text)
+        categories = eval_dataset['categories']
+        for clsid, cate_dic in enumerate(categories):
+            catid = cate_dic['id']
+            cname = cate_dic['name']
+            _catid2clsid[catid] = clsid
+            _clsid2catid[clsid] = catid
+            _clsid2cname[clsid] = cname
+    class_names = []
+    num_classes = len(_clsid2cname.keys())
+    for clsid in range(num_classes):
+        class_names.append(_clsid2cname[clsid])
+    return _catid2clsid, _clsid2catid, _clsid2cname, class_names
+
+
+
+
+
+
 class TrainValDataset(Dataset):
     '''YOLOv6 train_loader/val_loader, loads images and labels for training and validation.'''
     def __init__(
@@ -76,7 +185,52 @@ class TrainValDataset(Dataset):
         self.main_process = self.rank in (-1, 0)
         self.task = self.task.capitalize()
         self.class_names = data_dict["names"]
-        self.img_paths, self.labels = self.get_imgs_labels(self.img_dir)
+        # miemie2013 add it
+        self.force_coco_json = self.data_dict.get("force_coco_json", False)
+        if self.force_coco_json:
+            if self.task.lower() == "train":
+                anno_path = self.data_dict["train_anno_path"]
+                pre_path = self.data_dict["train"]
+            elif self.task.lower() == "val":
+                anno_path = self.data_dict["val_anno_path"]
+                pre_path = self.data_dict["val"]
+            # 种类id
+            _catid2clsid, _clsid2catid, _clsid2cname, class_names = get_class_msg(anno_path)
+            train_dataset = COCO(anno_path)
+            train_img_ids = train_dataset.getImgIds()
+            # 右下角坐标要+1
+            records = data_clean(train_dataset, train_img_ids, _catid2clsid, pre_path, self.task.lower(), xy_plus_1=True)
+            self.img_paths = []
+            self.labels = []
+            self.img_info = {}
+            for record in records:
+                img_dic = {}
+                self.img_paths.append(record['im_file'])
+                img_h = record['h']
+                img_w = record['w']
+                gt_bbox = record['gt_bbox']
+                gt_class = record['gt_class']
+                im_label = []
+                if len(gt_bbox) == 0:
+                    self.labels.append(np.zeros((0, 5), dtype=np.float32))
+                else:
+                    gt_bbox = gt_bbox.astype(np.float32)
+                    gt_bbox[:, 0] /= img_w
+                    gt_bbox[:, 1] /= img_h
+                    gt_bbox[:, 2] /= img_w
+                    gt_bbox[:, 3] /= img_h
+                    gt_class = gt_class.astype(np.float32)
+                    cxcy = (gt_bbox[:, :2] + gt_bbox[:, 2:]) * 0.5
+                    wh = gt_bbox[:, 2:] - gt_bbox[:, :2]
+                    cbox = np.concatenate([gt_class, cxcy, wh], -1)
+                    self.labels.append(cbox)
+                    for cb in cbox:
+                        im_label.append(cb.tolist())
+                img_dic = dict(shape=[int(img_h), int(img_w)], labels=im_label)
+                self.img_info[record['im_file']] = img_dic
+        else:
+            # 这代码写得跟一坨屎一样
+            self.img_paths, self.labels = self.get_imgs_labels(self.img_dir)
         self.rect = rect
         self.specific_shape = specific_shape
         self.target_height = height
@@ -242,6 +396,7 @@ class TrainValDataset(Dataset):
         return torch.stack(img, 0), torch.cat(label, 0), path, shapes
 
     def get_imgs_labels(self, img_dirs):
+        # 这代码写得跟一坨屎一样
         if not isinstance(img_dirs, list):
             img_dirs = [img_dirs]
         # we store the cache img file in the first directory of img_dirs

@@ -66,6 +66,14 @@ def get_args_parser(add_help=True):
                     if value is not None:
                         args.__dict__[key] = value
 
+    # 判断是否是调试状态
+    isDebug = True if sys.gettrace() else False
+    if isDebug:
+        print('Debug Mode.')
+        args.eval_config_file = '../' + args.eval_config_file
+        args.weights = '../' + args.weights
+        args.data = '../' + args.data
+        args.save_dir = '../' + args.save_dir
     # load params for reproduce 640 eval result
     if args.reproduce_640_eval:
         assert os.path.exists(args.eval_config_file), print("Reproduce config file {} does not exist".format(args.eval_config_file))
@@ -137,6 +145,14 @@ def run(data,
     device = Evaler.reload_device(device, model, task)
     half = device.type != 'cpu' and half
     data = Evaler.reload_dataset(data, task) if isinstance(data, str) else data
+    # 判断是否是调试状态
+    isDebug = True if sys.gettrace() else False
+    if isDebug:
+        print('Debug Mode.')
+        data['train'] = '../' + data['train']
+        data['val'] = '../' + data['val']
+        data['test'] = '../' + data['test']
+        data['anno_path'] = '../' + data['anno_path']
 
     # # verify imgsz is gs-multiple
     if specific_shape:

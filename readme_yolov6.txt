@@ -6,6 +6,13 @@ wget https://github.com/meituan/YOLOv6/releases/download/0.4.0/yolov6s.pt
 wget https://github.com/meituan/YOLOv6/releases/download/0.4.0/yolov6s6.pt
 
 
+
+改动：
+加上支持coco json格式数据集, 即
+force_coco_json: True
+
+
+
 ----------------------- eval -----------------------
 python tools/eval.py --data data/coco.yaml --batch 32 --weights yolov6s.pt --task val --reproduce_640_eval
 
@@ -25,7 +32,7 @@ nohup python tools/train.py -f exps/ppyolo/ppyolo_r50vd_voc2012.py -d 2 -b 8 -eb
 
 
 
-python tools/train.py --batch 8 --conf configs/yolov6s_finetune.py --data data/voc2012.yaml --fuse_ab --device 0
+python tools/train.py --batch 8 --epochs 16 --eval-interval 2 --workers 1 --conf configs/yolov6s_finetune.py --data data/voc2012.yaml --fuse_ab --device 0
 
 
 

@@ -113,6 +113,11 @@ def main(args):
     # Setup
     args.local_rank, args.rank, args.world_size = get_envs()
     cfg, device, args = check_and_init(args)
+    # 判断是否是调试状态
+    isDebug = True if sys.gettrace() else False
+    if isDebug:
+        print('Debug Mode.')
+        cfg._cfg_dict['model']['pretrained'] = '../' + cfg._cfg_dict['model']['pretrained']
     # reload envs because args was chagned in check_and_init(args)
     args.local_rank, args.rank, args.world_size = get_envs()
     LOGGER.info(f'training args are: {args}\n')
@@ -139,4 +144,11 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args_parser().parse_args()
+    # 判断是否是调试状态
+    isDebug = True if sys.gettrace() else False
+    if isDebug:
+        print('Debug Mode.')
+        args.conf_file = '../' + args.conf_file
+        args.data_path = '../' + args.data_path
+        args.output_dir = '../' + args.output_dir
     main(args)

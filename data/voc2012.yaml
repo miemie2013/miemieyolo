@@ -2,10 +2,12 @@
 train: ../VOCdevkit/VOC2012/JPEGImages # train images
 val: ../VOCdevkit/VOC2012/JPEGImages # val images
 test: ../custom_dataset/images/test # test images (optional)
-anno_path: ../VOCdevkit/VOC2012/annotations2/voc2012_train.json
+train_anno_path: ../VOCdevkit/VOC2012/annotations2/voc2012_train.json
+val_anno_path: ../VOCdevkit/VOC2012/annotations2/voc2012_val.json
 
-# whether it is coco dataset, only coco dataset should be set to True.
-is_coco: True
+# miemie2013 add it
+force_coco_json: True
+
 # Classes
 nc: 20  # number of classes
 names: ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog',

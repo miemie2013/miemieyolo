@@ -243,6 +243,8 @@ class Evaler:
         if task != 'speed' and len(pred_results):
             if 'anno_path' in self.data:
                 anno_json = self.data['anno_path']
+            elif 'force_coco_json' in self.data:
+                anno_json = self.data['val_anno_path']
             else:
                 # generated coco format labels in dataset initialization
                 task = 'val' if task == 'train' else task
@@ -421,6 +423,12 @@ class Evaler:
             data = yaml.safe_load(yaml_file)
         task = 'test' if task == 'test' else 'val'
         path = data.get(task, 'val')
+        # 判断是否是调试状态
+        import sys
+        isDebug = True if sys.gettrace() else False
+        if isDebug:
+            print('Debug Mode.')
+            path = '../' + path
         if not isinstance(path, list):
             path = [path]
         for p in path:
