@@ -13,7 +13,7 @@ def generate_anchors(feats, fpn_strides, grid_cell_size=5.0, grid_cell_offset=0.
             _, _, h, w = feats[i].shape
             shift_x = torch.arange(end=w, device=device) + grid_cell_offset
             shift_y = torch.arange(end=h, device=device) + grid_cell_offset
-            shift_y, shift_x = torch.meshgrid(shift_y, shift_x, indexing='ij')
+            shift_y, shift_x = torch.meshgrid(shift_y, shift_x)
             anchor_point = torch.stack(
                     [shift_x, shift_y], axis=-1).to(torch.float)
             if mode == 'af': # anchor-free

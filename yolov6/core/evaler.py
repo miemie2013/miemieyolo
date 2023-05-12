@@ -115,7 +115,7 @@ class Evaler:
                 from yolov6.utils.metrics import ConfusionMatrix
                 confusion_matrix = ConfusionMatrix(nc=model.nc)
 
-        for i, (imgs, targets, paths, shapes) in enumerate(pbar):
+        for i, (imgs, targets, paths, shapes, im_ids) in enumerate(pbar):
             # pre-process
             t1 = time_sync()
             imgs = imgs.to(self.device, non_blocking=True)
@@ -139,7 +139,7 @@ class Evaler:
                 eval_outputs = copy.deepcopy([x.detach().cpu() for x in outputs])
 
             # save result
-            pred_results.extend(self.convert_to_coco_format(outputs, imgs, paths, shapes, self.ids))
+            pred_results.extend(self.convert_to_coco_format(outputs, im_ids, imgs, paths, shapes, self.ids))
 
             # for tensorboard visualization, maximum images to show: 8
             if i == 0:
@@ -360,14 +360,14 @@ class Evaler:
             coords[:, [1, 3]] = coords[:, [1, 3]].clip(0, img0_shape[0])  # y1, y2
         return coords
 
-    def convert_to_coco_format(self, outputs, imgs, paths, shapes, ids):
+    def convert_to_coco_format(self, outputs, im_ids, imgs, paths, shapes, ids):
         pred_results = []
         for i, pred in enumerate(outputs):
             if len(pred) == 0:
                 continue
             path, shape = Path(paths[i]), shapes[i][0]
             self.scale_coords(imgs[i].shape[1:], pred[:, :4], shape, shapes[i][1])
-            image_id = int(path.stem) if self.is_coco else path.stem
+            # image_id = int(path.stem) if self.is_coco else path.stem
             bboxes = self.box_convert(pred[:, 0:4])
             bboxes[:, :2] -= bboxes[:, 2:] / 2
             cls = pred[:, 5]
@@ -377,7 +377,7 @@ class Evaler:
                 bbox = [round(x, 3) for x in bboxes[ind].tolist()]
                 score = round(scores[ind].item(), 5)
                 pred_data = {
-                    "image_id": image_id,
+                    "image_id": int(im_ids[i][0]),
                     "category_id": category_id,
                     "bbox": bbox,
                     "score": score

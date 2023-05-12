@@ -116,6 +116,8 @@ venv.bak/
 *.pt
 *.engine
 
+*.json
+
 ### PyCharm ###
 # User-specific stuff
 .idea

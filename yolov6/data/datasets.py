@@ -202,10 +202,12 @@ class TrainValDataset(Dataset):
             records = data_clean(train_dataset, train_img_ids, _catid2clsid, pre_path, self.task.lower(), xy_plus_1=True)
             self.img_paths = []
             self.labels = []
+            self.im_ids = []
             self.img_info = {}
             for record in records:
                 img_dic = {}
                 self.img_paths.append(record['im_file'])
+                self.im_ids.append(record['im_id'])
                 img_h = record['h']
                 img_w = record['w']
                 gt_bbox = record['gt_bbox']
@@ -348,8 +350,8 @@ class TrainValDataset(Dataset):
         # Convert
         img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         img = np.ascontiguousarray(img)
-
-        return torch.from_numpy(img), labels_out, self.img_paths[index], shapes
+        im_id = self.im_ids[index]
+        return torch.from_numpy(img), labels_out, self.img_paths[index], shapes, im_id
 
     def load_image(self, index, shrink_size=None):
         """Load image.
@@ -390,10 +392,10 @@ class TrainValDataset(Dataset):
     @staticmethod
     def collate_fn(batch):
         """Merges a list of samples to form a mini-batch of Tensor(s)"""
-        img, label, path, shapes = zip(*batch)
+        img, label, path, shapes, im_ids = zip(*batch)
         for i, l in enumerate(label):
             l[:, 0] = i  # add target image index for build_targets()
-        return torch.stack(img, 0), torch.cat(label, 0), path, shapes
+        return torch.stack(img, 0), torch.cat(label, 0), path, shapes, im_ids
 
     def get_imgs_labels(self, img_dirs):
         # 这代码写得跟一坨屎一样
