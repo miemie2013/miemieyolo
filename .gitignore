@@ -115,3 +115,8 @@ venv.bak/
 *.onnx
 *.pt
 *.engine
+
+### PyCharm ###
+# User-specific stuff
+.idea
+
