@@ -434,7 +434,19 @@ class Trainer:
             LOGGER.info(f'Loading state_dict from {weights} for fine-tuning...')
             model = load_state_dict(weights, model, map_location=device)
 
-        LOGGER.info('Model: {}'.format(model))
+        # LOGGER.info('Model: {}'.format(model))
+        trainable_params = 0
+        nontrainable_params = 0
+        for name_, param_ in model.named_parameters():
+            mul = np.prod(param_.shape)
+            if param_.requires_grad is True:
+                trainable_params += mul
+            else:
+                nontrainable_params += mul
+        total_params = trainable_params + nontrainable_params
+        LOGGER.info('Total params: %s' % format(total_params, ","))
+        LOGGER.info('Trainable params: %s' % format(trainable_params, ","))
+        LOGGER.info('Non-trainable params: %s' % format(nontrainable_params, ","))
         return model
 
     def get_teacher_model(self, args, cfg, nc, device):
