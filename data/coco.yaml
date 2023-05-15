@@ -2,7 +2,11 @@
 train: ../COCO/train2017 # 118287 images
 val: ../COCO/val2017  # 5000 images
 test: ../COCO/test2017
-anno_path: ../COCO/annotations/instances_val2017.json
+train_anno_path: ../COCO/annotations/instances_train2017.json
+val_anno_path: ../COCO/annotations/instances_val2017.json
+
+# miemie2013 add it
+force_coco_json: True
 
 # number of classes
 nc: 80

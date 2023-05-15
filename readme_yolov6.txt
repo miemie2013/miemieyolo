@@ -14,9 +14,30 @@ force_coco_json: True
 
 
 ----------------------- eval -----------------------
-python tools/eval.py --data data/coco.yaml --batch 32 --weights yolov6s.pt --task val --reproduce_640_eval
+python tools/eval.py --data data/coco.yaml --batch 32 --weights yolov6s.pt --task val --reproduce_640_eval --device 3
 
-python tools/eval.py --data data/coco.yaml --batch 32 --weights yolov6s6.pt --task val --reproduce_640_eval --img 1280
+
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.450
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.618
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.489
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.243
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.502
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.627
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.358
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.586
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.636
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.411
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.708
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.814
+
+
+
+
+
+
+
+
+python tools/eval.py --data data/coco.yaml --batch 32 --weights yolov6s6.pt --task val --reproduce_640_eval --img 1280 --device 3
 
 
 
@@ -32,7 +53,9 @@ nohup python tools/train.py -f exps/ppyolo/ppyolo_r50vd_voc2012.py -d 2 -b 8 -eb
 
 
 
-python tools/train.py --batch 8 --epochs 16 --eval-interval 2 --workers 1 --conf configs/yolov6s_finetune.py --data data/voc2012.yaml --fuse_ab --device 0
+python tools/train.py --batch 8 --epochs 2 --eval-interval 1 --workers 2 --conf configs/yolov6s_finetune.py --data data/voc2012.yaml --fuse_ab --device 3
+
+nohup python tools/train.py --batch 8 --epochs 16 --eval-interval 4 --workers 2 --conf configs/yolov6s_finetune.py --data data/voc2012.yaml --fuse_ab --device 3     > yolov6s_finetune.log 2>&1 &
 
 
 

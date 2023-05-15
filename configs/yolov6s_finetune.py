@@ -41,11 +41,11 @@ model = dict(
 solver = dict(
     optim='SGD',
     lr_scheduler='Cosine',
-    lr0=0.0032,
+    lr0=0.00032,
     lrf=0.12,
     momentum=0.843,
     weight_decay=0.00036,
-    warmup_epochs=2.0,
+    warmup_epochs=1.0,
     warmup_momentum=0.5,
     warmup_bias_lr=0.05
 )
